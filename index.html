@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Surf CV">
+    <link rel="manifest" href="manifest.json">
+    <title>Previsiones Oleaje CV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .install-prompt {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 15px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .install-prompt.show {
+            display: flex;
+        }
+        
+        .install-btn {
+            background: white;
+            color: #4CAF50;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .spots-nav {
+            background: white;
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            border-bottom: 2px solid #e0e0e0;
+            scrollbar-width: none;
+        }
+        
+        .spots-nav::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .spot-chip {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .spot-chip.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .aemet-card {
+            background: white;
+            margin: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .aemet-link {
+            display: block;
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .aemet-link:active {
+            background: #e9ecef;
+        }
+        
+        .sources-container {
+            padding: 10px;
+        }
+        
+        .source-card {
+            background: white;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .source-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .source-link {
+            display: block;
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.05em;
+            transition: all 0.3s ease;
+        }
+        
+        .source-link:active {
+            background: #e9ecef;
+            transform: scale(0.98);
+        }
+        
+        .quick-open {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+            cursor: pointer;
+            z-index: 999;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-open:active {
+            transform: scale(0.95);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .toast.show {
+            display: block;
+            animation: toastSlide 0.3s ease;
+        }
+        
+        @keyframes toastSlide {
+            from { bottom: 70px; opacity: 0; }
+            to { bottom: 90px; opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="install-prompt" id="installPrompt">
+        <span>📲 Instala la app en tu móvil</span>
+        <button class="install-btn" id="installBtn">Instalar</button>
+    </div>
+    
+    <div class="header">
+        <h1>🌊 Surf Forecast CV</h1>
+    </div>
+    
+    <div class="spots-nav">
+        <div class="spot-chip" data-spot="castellon">Castellón</div>
+        <div class="spot-chip" data-spot="sagunto">Sagunto</div>
+        <div class="spot-chip" data-spot="saplaya">Port Saplaya</div>
+        <div class="spot-chip" data-spot="saler">El Saler</div>
+        <div class="spot-chip" data-spot="jucar">El Jucar</div>
+    </div>
+    
+    <div class="aemet-card">
+        <div class="card-header">
+            📍 Mapa General AEMET
+        </div>
+        <a href="https://www.aemet.es/es/eltiempo/prediccion/maritima?opc1=0&opc3=0&area=val1" target="_blank" class="aemet-link">
+            🗺️ Ver Mapa de Oleaje
+        </a>
+    </div>
+    
+    <div class="sources-container" id="sourcesContainer">
+        <div class="empty-state">
+            <span class="empty-state-icon">🏄‍♂️</span>
+            <p>Selecciona un spot para ver<br>las previsiones disponibles</p>
+        </div>
+    </div>
+    
+    <button class="quick-open hidden" id="quickOpen" title="Abrir todas">🚀</button>
+    
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const spotData = {
+            castellon: {
+                name: 'Castellón',
+                sources: [
+                    { name: '🌬️ Windfinder', url: 'https://es.windfinder.com/forecast/castellon' },
+                    { name: '📊 Windguru', url: 'https://www.windguru.cz/753744' },
+                    { name: '🏄 Surf-forecast', url: 'https://www.surf-forecast.com/breaks/Benicassim/forecasts/latest/six_day' },
+                    { name: '🌊 Medswells', url: 'https://medswells.appspot.com/pages/previsiones-de-olas/?s=18' }
+                ]
+            },
+            sagunto: {
+                name: 'Sagunto',
+                sources: [
+                    { name: '🌬️ Windfinder', url: 'https://es.windfinder.com/forecast/canet_d_en_berenguer' },
+                    { name: '📊 Windguru', url: 'https://www.windguru.cz/206821' },
+                    { name: '🌊 Medswells', url: 'https://medswells.appspot.com/pages/previsiones-de-olas/?s=20' }
+                ]
+            },
+            saplaya: {
+                name: 'Port Saplaya / Arenas',
+                sources: [
+                    { name: '🌬️ Windfinder', url: 'https://es.windfinder.com/forecast/la_marina_de_valencia_valencia_spain' },
+                    { name: '📊 Windguru', url: 'https://www.windguru.cz/48865' },
+                    { name: '🏄 Surf-forecast', url: 'https://www.surf-forecast.com/breaks/Port-Saplaya/forecasts/latest/six_day' },
+                    { name: '🌊 Medswells', url: 'https://medswells.appspot.com/pages/previsiones-de-olas/?s=21' }
+                ]
+            },
+            saler: {
+                name: 'El Saler',
+                sources: [
+                    { name: '🌬️ Windfinder', url: 'https://es.windfinder.com/forecast/el_pollo' },
+                    { name: '📊 Windguru', url: 'https://www.windguru.cz/48863' }
+                ]
+            },
+            jucar: {
+                name: 'El Jucar',
+                sources: [
+                    { name: '🌬️ Windfinder', url: 'https://es.windfinder.com/forecast/rio_jucar' },
+                    { name: '📊 Windguru', url: 'https://www.windguru.cz/206825' },
+                    { name: '🏄 Surf-forecast', url: 'https://www.surf-forecast.com/breaks/El-Jucar/forecasts/latest/six_day' }
+                ]
+            }
+        };
+
+        let currentSpot = null;
+        let deferredPrompt = null;
+
+        // PWA Install
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').classList.add('show');
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showToast('¡App instalada! 🎉');
+                }
+                deferredPrompt = null;
+                document.getElementById('installPrompt').classList.remove('show');
+            }
+        });
+
+        // Spot selection
+        document.querySelectorAll('.spot-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.spot-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentSpot = chip.dataset.spot;
+                loadSources(currentSpot);
+            });
+        });
+
+        // Load sources
+        function loadSources(spotKey) {
+            const spot = spotData[spotKey];
+            const container = document.getElementById('sourcesContainer');
+            
+            let html = '';
+            spot.sources.forEach(source => {
+                html += `
+                    <div class="source-card fade-in">
+                        <div class="source-header">
+                            <span>${source.name}</span>
+                        </div>
+                        <a href="${source.url}" target="_blank" class="source-link">
+                            Ver Previsión →
+                        </a>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            document.getElementById('quickOpen').classList.remove('hidden');
+        }
+
+        // Quick open all
+        document.getElementById('quickOpen').addEventListener('click', () => {
+            if (currentSpot) {
+                const spot = spotData[currentSpot];
+                spot.sources.forEach(source => {
+                    window.open(source.url, '_blank');
+                });
+                showToast(`Abriendo ${spot.sources.length} previsiones...`);
+            }
+        });
+
+        // Toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>
